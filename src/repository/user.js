@@ -8,7 +8,6 @@ class UserRepository {
         } else {
             this.dbType = 'mongo';
         }
-        console.log('UserRepository constructor');
     }
     async findUser(email) {
         try {

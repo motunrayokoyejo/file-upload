@@ -4,20 +4,14 @@ const mongoose = require('mongoose');
 
 const connectToDB = async () => {
     const uri = process.env.MONGODB_URI;
-    console.log(uri);
     if (!uri) {
         console.error("MongoDB connection URI is missing. Check your .env file.");
         process.exit(1);
     }
 
     try {
-        await mongoose.connect(uri, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
-        console.log('✅ Connected to MongoDB');
+        await mongoose.connect(uri);
     } catch (error) {
-        console.error('❌ MongoDB Connection Error:', error.message);
         process.exit(1);
     }
 };

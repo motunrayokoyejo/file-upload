@@ -19,10 +19,7 @@ const createApp = async (dbType) => {
             }
         })
     } else {
-
-        console.log("🔗 Attempting to connect to MongoDB...");
         await connectToDB();
-       
     }
 
     app.use(express.json());

@@ -6,7 +6,6 @@ const UserRepository = require('../repository/user');
 class AuthService {
   constructor(dbType) {
     this.userRepository = new UserRepository(dbType);
-    console.log('AuthService constructor');
   }
   async registerUser(userData) {
     const { email, password, name } = userData;

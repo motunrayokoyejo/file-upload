@@ -3,7 +3,6 @@ const AuthService = require('../services/authService');
 class AuthController {
   constructor(dbType) {
     this.authService = new AuthService(dbType);
-    console.log('Auth controller initialized with db type:', dbType);
     this.register = this.register.bind(this);
     this.login = this.login.bind(this);
     this.forgotPassword = this.forgotPassword.bind(this);
