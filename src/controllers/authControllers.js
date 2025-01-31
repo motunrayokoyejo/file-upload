@@ -1,9 +1,17 @@
-const authService = require('../services/authService');
+const AuthService = require('../services/authService');
 
 class AuthController {
+  constructor(dbType) {
+    this.authService = new AuthService(dbType);
+    console.log('Auth controller initialized with db type:', dbType);
+    this.register = this.register.bind(this);
+    this.login = this.login.bind(this);
+    this.forgotPassword = this.forgotPassword.bind(this);
+    this.resetPassword = this.resetPassword.bind(this);
+  }
   async register(req, res) {
     try {
-      const token = await authService.registerUser(req.body);
+      const token = await this.authService.registerUser(req.body);
       res.status(201).json({
         message: 'User registered successfully',
         token
@@ -18,14 +26,14 @@ class AuthController {
 
   async login(req, res) {
     try {
-      const token = await authService.loginUser(req.body);
+      const token = await this.authService.loginUser(req.body);
       res.json({
         message: 'Login successful',
         token
       });
     } catch (error) {
       console.error('Login error:', error);
-      res.status(401).json({
+      res.status(500).json({
         message: error.message || 'Internal server error'
       });
     }
@@ -33,7 +41,7 @@ class AuthController {
 
   async forgotPassword(req, res) {
     try {
-      const resetToken = await authService.generateResetToken(req.body.email);
+      const resetToken = await this.authService.generateResetToken(req.body.email);
       res.json({
         message: 'Password reset token generated',
         resetToken
@@ -48,7 +56,7 @@ class AuthController {
 
   async resetPassword(req, res) {
     try {
-      await authService.resetPassword(req.body);
+      await this.authService.resetPassword(req.body);
       res.json({
         message: 'Password reset successful'
       });
@@ -61,4 +69,4 @@ class AuthController {
   }
 }
 
-module.exports = new AuthController();
+module.exports = AuthController;

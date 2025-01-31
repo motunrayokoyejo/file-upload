@@ -1,15 +1,17 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const knex = require('../config/database');
+const UserRepository = require('../repository/user');
 
 class AuthService {
+  constructor(dbType) {
+    this.userRepository = new UserRepository(dbType);
+    console.log('AuthService constructor');
+  }
   async registerUser(userData) {
     const { email, password, name } = userData;
     
-    const existingUser = await knex('users')
-      .where({ email })
-      .first();
+    const existingUser = await this.userRepository.findUser(email);
 
     if (existingUser) {
       throw new Error('User already exists');
@@ -17,13 +19,11 @@ class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    const [userId] = await knex('users')
-      .insert({
-        email,
-        password: hashedPassword,
-        name,
-        created_at: knex.fn.now()
-      });
+    const userId = await this.userRepository.createUser({
+      email,
+      password: hashedPassword,
+      name
+    });
 
     return this.generateToken(userId);
   }
@@ -31,9 +31,7 @@ class AuthService {
   async loginUser(credentials) {
     const { email, password } = credentials;
 
-    const user = await knex('users')
-      .where({ email })
-      .first();
+    const user = await this.userRepository.findUser(email);
 
     if (!user) {
       throw new Error('Invalid credentials');
@@ -48,23 +46,19 @@ class AuthService {
   }
 
   async generateResetToken(email) {
-    const user = await knex('users')
-      .where({ email })
-      .first();
+    const user = await this.userRepository.findUser(email);
 
     if (!user) {
       throw new Error('User not found');
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+    const resetTokenExpiry = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
 
-    await knex('users')
-      .where({ id: user.id })
-      .update({
-        reset_token: resetToken,
-        reset_token_expiry: resetTokenExpiry
-      });
+    await this.userRepository.updateUser({ id: user.id }, {
+      reset_token: resetToken,
+      reset_token_expiry: resetTokenExpiry
+    });
 
     return resetToken;
   }
@@ -72,13 +66,7 @@ class AuthService {
   async resetPassword(resetData) {
     const { email, token, newPassword } = resetData;
 
-    const user = await knex('users')
-      .where({
-        email,
-        reset_token: token,
-      })
-      .where('reset_token_expiry', '>', new Date())
-      .first();
+    const user = await this.userRepository.findOne({ email, reset_token: token, reset_token_expiry: { $gt: new Date() } });
 
     if (!user) {
       throw new Error('Invalid or expired reset token');
@@ -86,14 +74,11 @@ class AuthService {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    await knex('users')
-      .where({ id: user.id })
-      .update({
-        password: hashedPassword,
-        reset_token: null,
-        reset_token_expiry: null,
-        updated_at: knex.fn.now()
-      });
+    await this.userRepository.updateUser({ id: user.id }, {
+      password: hashedPassword,
+      reset_token: null,
+      reset_token_expiry: null
+    });
   }
 
   generateToken(userId) {
@@ -105,4 +90,4 @@ class AuthService {
   }
 }
 
-module.exports = new AuthService();
+module.exports = AuthService;

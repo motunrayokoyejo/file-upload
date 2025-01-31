@@ -1,22 +1,31 @@
 const fs = require('fs');
-const fileService = require('../services/fileService');
+const FileService = require('../services/fileService');
 const path = require('path');
 const { Readable, pipeline } = require('stream');
 const { promisify } = require('util');
 const streamPipeline = promisify(pipeline);
 
 class FileController {
+  constructor(dbType) {
+    this.fileService = new FileService(dbType);
+    this.uploadFile = this.uploadFile.bind(this);
+    this.streamUpload = this.streamUpload.bind(this);
+    this.listFiles = this.listFiles.bind(this);
+    this.downloadFile = this.downloadFile.bind(this);
+    this.deleteFile = this.deleteFile.bind(this);
+  }
+
   async uploadFile(req, res) {
     if (!req.file) {
       return res.status(400).json({ message: 'No file provided' });
     }
 
     try {
-      if (!fileService.validateFileType(req.file.mimetype)) {
+      if (!this.fileService.validateFileType(req.file.mimetype)) {
         return res.status(400).json({ message: 'Invalid file type' });
       }
 
-      await fileService.saveFileMetadata(req.user.userId, {
+      await this.fileService.saveFileMetadata(req.user.userId, {
         path: req.file.path,
         originalname: req.file.originalname,
         mimetype: req.file.mimetype,
@@ -47,7 +56,7 @@ class FileController {
           originalName = `upload-${Date.now()}.bin`;
       }
 
-      const tempPath = path.join(fileService.uploadDir, `temp-${Date.now()}${path.extname(originalName)}`);
+      const tempPath = path.join(this.fileService.uploadDir, `temp-${Date.now()}${path.extname(originalName)}`);
       const writeStream = fs.createWriteStream(tempPath);
 
       req.on('data', (chunk) => {
@@ -56,7 +65,7 @@ class FileController {
 
       await streamPipeline(req, writeStream);
 
-      await fileService.saveFileMetadata(req.user.userId, {
+      await this.fileService.saveFileMetadata(req.user.userId, {
         path: tempPath,
         originalname: originalName,
         mimetype: req.headers['content-type'] || 'application/octet-stream',
@@ -72,7 +81,7 @@ class FileController {
 
   async listFiles(req, res) {
     try {
-      const files = await fileService.getUserFiles(req.user.userId);
+      const files = await this.fileService.getUserFiles(req.user.userId);
       res.json(files);
     } catch (error) {
       console.error('List files error:', error);
@@ -82,13 +91,13 @@ class FileController {
 
   async downloadFile(req, res) {
     try {
-      const file = await fileService.getFile(req.params.fileId, req.user.userId);
+      const file = await this.fileService.getFile(req.params.fileId, req.user.userId);
       
       if (!file) {
         return res.status(404).json({ message: 'File not found' });
       }
 
-      const fileStream = fs.createReadStream(file.path, { encoding: null });
+      const fileStream = fs.createReadStream(file.path);
      
       res.setHeader('Content-Type', file.mime_type);
       res.setHeader('Content-Disposition', `attachment; filename="${file.original_name}"`);
@@ -108,7 +117,7 @@ class FileController {
 
   async deleteFile(req, res) {
     try {
-      await fileService.deleteFile(req.params.fileId, req.user.userId);
+      await this.fileService.deleteFile(req.params.fileId, req.user.userId);
       res.json({ message: 'File deleted successfully' });
     } catch (error) {
       console.error('Delete error:', error);
@@ -120,4 +129,4 @@ class FileController {
   }
 }
 
-module.exports = new FileController();
+module.exports = FileController;

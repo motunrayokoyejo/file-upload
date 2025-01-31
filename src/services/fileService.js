@@ -2,15 +2,16 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const crypto = require('crypto');
-const knex = require('../config/database');
+const FileRepository = require('../repository/file');
 const { pipeline } = require('stream/promises');
 const { createWriteStream } = require('fs');
 const { mkdir } = require('fs/promises');
 
 class FileService {
-  constructor() {
+  constructor(dbType) {
     this.uploadDir = path.join(__dirname, '../../uploads');
     this.ensureUploadDirectory();
+    this.fileRepository = new FileRepository(dbType);
   }
 
   generateFileName(originalName) {
@@ -49,7 +50,7 @@ class FileService {
 
         await fs.promises.rename(fileData.path, newPath);
   
-        return await knex('files').insert({
+        await this.fileRepository.createFile({
           user_id: userId,
           filename: fileName,
           original_name: fileData.originalname,
@@ -57,7 +58,7 @@ class FileService {
           size: fileData.size,
           path: newPath,
           status: 'completed'
-        });
+        })
       } catch (error) {
         if (fileData.path && fs.existsSync(fileData.path)) {
           await fs.promises.unlink(fileData.path);
@@ -67,18 +68,11 @@ class FileService {
   }
 
   async getUserFiles(userId) {
-    return await knex('files')
-      .where('user_id', userId)
-      .orderBy('created_at', 'desc');
+    return this.fileRepository.findAllFilesForUser(userId);
   }
 
   async getFile(fileId, userId) {
-    return await knex('files')
-      .where({
-        id: fileId,
-        user_id: userId
-      })
-      .first();
+    return this.fileRepository.findFileForUser(userId, fileId);
   }
 
   async deleteFile(fileId, userId) {
@@ -89,15 +83,10 @@ class FileService {
     }
 
     await fs.promises.unlink(file.path);
-    await knex('files')
-      .where({
-        id: fileId,
-        user_id: userId
-      })
-      .delete();
+    await this.fileRepository.deleteFile(fileId, userId);
 
     return true;
   }
 }
 
-module.exports = new FileService();
+module.exports = FileService;

@@ -1,6 +1,5 @@
 const express = require('express');
-const router = express.Router();
-const authController = require('../controllers/authControllers');
+const AuthController = require('../controllers/authControllers');
 const validateRequest = require('../middleware/validateRequest');
 const {
   registerValidation,
@@ -8,9 +7,16 @@ const {
   resetPasswordValidation
 } = require('../middleware/authValidation');
 
-router.post('/register', registerValidation, validateRequest, authController.register);
-router.post('/login', loginValidation, validateRequest, authController.login);
-router.post('/forgot-password', authController.forgotPassword);
-router.post('/reset-password', resetPasswordValidation, validateRequest, authController.resetPassword);
+function createRouter (dbType) {
+  const router = express.Router();
+  const authController = new AuthController(dbType);
 
-module.exports = router;
+  router.post('/register', registerValidation, validateRequest, authController.register);
+  router.post('/login', loginValidation, validateRequest, authController.login);
+  router.post('/forgot-password', authController.forgotPassword);
+  router.post('/reset-password', resetPasswordValidation, validateRequest, authController.resetPassword);
+  
+  return router;
+};
+
+module.exports = createRouter;
