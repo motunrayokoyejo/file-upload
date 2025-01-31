@@ -1,6 +1,5 @@
 ## File Upload API
-This API is a file upload service designed to handle files larger than 5MB efficiently. 
-The service supports user authentication, enabling users to upload, manage, and access their files securely.
+This API is a file upload service designed to handle large files, it supports user authentication, enabling users to upload, manage, and access their files securely.
 
 ### Installation
 * Before you begin, ensure you have the following installed on your local machine:
